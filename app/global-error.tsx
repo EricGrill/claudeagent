@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 export default function GlobalError({
   error,
@@ -9,9 +10,30 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [errorId, setErrorId] = useState<string | null>(null);
+
   useEffect(() => {
-    console.error("Global error:", error);
-    // TODO: Send to error tracking service
+    const eventId = Sentry.captureException(error, {
+      tags: {
+        digest: error.digest,
+        errorType: "global-error",
+      },
+    });
+    setErrorId(eventId);
+
+    console.error(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        message: "Global error occurred",
+        context: {
+          errorName: error.name,
+          errorMessage: error.message,
+          digest: error.digest,
+          sentryEventId: eventId,
+        },
+      })
+    );
   }, [error]);
 
   return (
@@ -69,6 +91,19 @@ export default function GlobalError({
               A critical error occurred. Please refresh the page or try again
               later.
             </p>
+
+            {(error.digest || errorId) && (
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#999",
+                  marginBottom: "1rem",
+                  fontFamily: "monospace",
+                }}
+              >
+                Reference: {error.digest || errorId}
+              </p>
+            )}
 
             {process.env.NODE_ENV === "development" && error.message && (
               <details

@@ -1,9 +1,11 @@
 "use client";
 
 import { Component, ErrorInfo, ReactNode } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 interface ErrorFallbackProps {
   error: Error;
+  errorId: string | null;
   resetError: () => void;
 }
 
@@ -15,25 +17,48 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  errorId: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorId: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught error:", error, errorInfo);
-    // TODO: Send to error tracking service (e.g., Sentry, LogRocket)
+    const eventId = Sentry.captureException(error, {
+      tags: {
+        errorType: "error-boundary",
+      },
+      extra: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
+
+    this.setState({ errorId: eventId });
+
+    console.error(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        message: "ErrorBoundary caught error",
+        context: {
+          errorName: error.name,
+          errorMessage: error.message,
+          sentryEventId: eventId,
+          componentStack: errorInfo.componentStack,
+        },
+      })
+    );
   }
 
   resetError = () => {
-    this.setState({ hasError: false, error: undefined });
+    this.setState({ hasError: false, error: undefined, errorId: null });
   };
 
   render() {
@@ -42,6 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
         if (typeof this.props.fallback === "function") {
           return this.props.fallback({
             error: this.state.error,
+            errorId: this.state.errorId,
             resetError: this.resetError,
           });
         }
@@ -51,6 +77,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <DefaultErrorFallback
           error={this.state.error}
+          errorId={this.state.errorId}
           resetError={this.resetError}
         />
       );
@@ -60,7 +87,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-function DefaultErrorFallback({ error, resetError }: ErrorFallbackProps) {
+function DefaultErrorFallback({ error, errorId, resetError }: ErrorFallbackProps) {
   return (
     <div
       role="alert"
@@ -114,6 +141,19 @@ function DefaultErrorFallback({ error, resetError }: ErrorFallbackProps) {
           We encountered an unexpected error. Please try again or refresh the
           page.
         </p>
+
+        {errorId && (
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "#999",
+              marginBottom: "1rem",
+              fontFamily: "monospace",
+            }}
+          >
+            Reference: {errorId}
+          </p>
+        )}
 
         {process.env.NODE_ENV === "development" && (
           <details
