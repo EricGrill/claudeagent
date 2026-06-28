@@ -3,8 +3,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Elizabethtown Jiu-Jitsu",
-  description: "Elizabethtown Jiu-Jitsu - Train with the best",
+  title: "ClaimZero - Admin Settings",
+  description: "ClaimZero MVP - Risk Analysis Platform",
 };
 
 export default function RootLayout({
