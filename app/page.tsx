@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main
@@ -6,10 +8,9 @@ export default function Home() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "100vh",
+        minHeight: "calc(100vh - 150px)",
         padding: "2rem",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        textAlign: "center",
       }}
     >
       <h1
@@ -20,18 +21,33 @@ export default function Home() {
           color: "#1a1a1a",
         }}
       >
-        Elizabethtown Jiu-Jitsu
+        Hippo Bitcoin ATM
       </h1>
       <p
         style={{
           fontSize: "1.25rem",
           color: "#666",
-          textAlign: "center",
           maxWidth: "600px",
+          marginBottom: "2rem",
+          lineHeight: "1.6",
         }}
       >
-        Welcome to our dojo. Train hard, stay humble.
+        #1 provider of Bitcoin ATMs in Pennsylvania. Buy and sell Bitcoin easily at our convenient locations.
       </p>
+      <Link
+        href="/locations"
+        style={{
+          backgroundColor: "#f5c518",
+          color: "#1a1a1a",
+          padding: "1rem 2rem",
+          fontSize: "1rem",
+          fontWeight: "600",
+          borderRadius: "8px",
+          transition: "background-color 0.2s",
+        }}
+      >
+        Find a Bitcoin ATM
+      </Link>
     </main>
   );
 }
