@@ -1,0 +1,246 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant/Organization model for multi-tenant support
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  portfolios  Portfolio[]
+  users       User[]
+  newsletters NewsletterConfig[]
+
+  @@map("tenants")
+}
+
+// User model for newsletter recipients
+model User {
+  id        String   @id @default(cuid())
+  email     String
+  name      String?
+  role      UserRole @default(VIEWER)
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions NewsletterSubscription[]
+
+  @@unique([email, tenantId])
+  @@index([tenantId])
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  LENDER
+  INSURER
+  GENERAL_CONTRACTOR
+  ADMIN
+  VIEWER
+}
+
+// Portfolio model - collection of projects
+model Portfolio {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  tenantId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([tenantId])
+  @@map("portfolios")
+}
+
+// Project model - individual construction projects
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  location    String?
+  status      ProjectStatus @default(ACTIVE)
+  portfolioId String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  portfolio  Portfolio    @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  riskScores RiskScore[]
+  riskSignals RiskSignal[]
+
+  @@index([portfolioId])
+  @@index([status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// Risk Score - weekly snapshot of project risk
+model RiskScore {
+  id            String        @id @default(cuid())
+  projectId     String
+  overallScore  Float
+  scheduleScore Float?
+  designScore   Float?
+  costScore     Float?
+  disputeScore  Float?
+  threshold     RiskThreshold
+  computedAt    DateTime      @default(now())
+  weekStart     DateTime
+  weekEnd       DateTime
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([computedAt])
+  @@index([weekStart])
+  @@map("risk_scores")
+}
+
+enum RiskThreshold {
+  LOW
+  WATCH
+  ELEVATED
+  CRITICAL
+}
+
+// Risk Signal - individual risk indicators
+model RiskSignal {
+  id          String           @id @default(cuid())
+  projectId   String
+  category    RiskCategory
+  severity    SignalSeverity
+  title       String
+  description String?
+  status      SignalStatus     @default(ACTIVE)
+  detectedAt  DateTime         @default(now())
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([category])
+  @@index([status])
+  @@index([detectedAt])
+  @@map("risk_signals")
+}
+
+enum RiskCategory {
+  SCHEDULE
+  DESIGN
+  COST
+  DISPUTE
+  SAFETY
+  REGULATORY
+  WEATHER
+  SUPPLY_CHAIN
+}
+
+enum SignalSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SignalStatus {
+  ACTIVE
+  MONITORING
+  RESOLVED
+  DISMISSED
+}
+
+// Newsletter configuration per tenant
+model NewsletterConfig {
+  id            String              @id @default(cuid())
+  tenantId      String
+  frequency     NewsletterFrequency @default(WEEKLY)
+  dayOfWeek     Int                 @default(1) // 0=Sunday, 1=Monday, etc.
+  hourOfDay     Int                 @default(8) // Hour in UTC
+  isActive      Boolean             @default(true)
+  includeAnonymized Boolean         @default(false) // Cross-tenant anonymized data
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  issues       NewsletterIssue[]
+  subscriptions NewsletterSubscription[]
+
+  @@unique([tenantId])
+  @@map("newsletter_configs")
+}
+
+enum NewsletterFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+// Newsletter subscription
+model NewsletterSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  configId     String
+  isActive     Boolean  @default(true)
+  subscribedAt DateTime @default(now())
+  unsubscribedAt DateTime?
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  config NewsletterConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, configId])
+  @@index([configId])
+  @@map("newsletter_subscriptions")
+}
+
+// Newsletter issue - record of sent newsletters
+model NewsletterIssue {
+  id           String             @id @default(cuid())
+  configId     String
+  weekStart    DateTime
+  weekEnd      DateTime
+  subject      String
+  htmlContent  String?
+  pdfUrl       String?
+  status       NewsletterStatus   @default(DRAFT)
+  sentAt       DateTime?
+  recipientCount Int              @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  config NewsletterConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId])
+  @@index([weekStart])
+  @@index([status])
+  @@map("newsletter_issues")
+}
+
+enum NewsletterStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
