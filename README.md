@@ -1,6 +1,12 @@
-# Elizabethtown Jiu-Jitsu
+# AgentBridgeLinear
 
-A Next.js application for Elizabethtown Jiu-Jitsu.
+A Next.js application that bridges Linear issues with AI coding agents.
+
+## Kimi Provider
+
+The Kimi provider enables execution of prompts via the Kimi Code CLI.
+
+See [Kimi Provider Documentation](./src/providers/KIMI_PROVIDER.md) for details.
 
 ## Getting Started
 
