@@ -10,6 +10,25 @@ export interface Project {
   claimsCount: number;
   budget: number;
   progress: number;
+  autodeskIntegration?: AutodeskProjectIntegration;
+}
+
+export interface AutodeskProjectIntegration {
+  enabled: boolean;
+  autodeskProjectId: string;
+  autodeskAccountId: string;
+  autodeskProjectName: string;
+  linkedAt: string;
+  linkedBy: string;
+  syncSettings: {
+    syncIssues: boolean;
+    syncDocuments: boolean;
+    syncUsers: boolean;
+    autoImportNewIssues: boolean;
+  };
+  lastSyncAt?: string;
+  syncStatus?: "idle" | "syncing" | "error";
+  syncError?: string;
 }
 
 export interface Claim {
@@ -21,4 +40,15 @@ export interface Claim {
   amount: number;
   submittedAt: string;
   submittedBy: string;
+  autodeskIssueLink?: AutodeskIssueLink;
+}
+
+export interface AutodeskIssueLink {
+  autodeskIssueId: string;
+  autodeskProjectId: string;
+  displayId: number;
+  syncEnabled: boolean;
+  linkedAt: string;
+  linkedBy: string;
+  lastSyncedAt?: string;
 }
