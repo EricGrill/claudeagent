@@ -1,121 +1,244 @@
-# ClaimZero MVP
+# ClaimZero
 
-A Next.js application for the ClaimZero risk analysis platform.
-
-## Features
-
-### Admin Settings UI
-
-Global administrators can configure optional services from `/admin/settings`:
-
-- **Object Storage (S3/MinIO)** - S3-compatible storage for file uploads and exports
-- **Email (SMTP)** - SMTP server configuration for digest emails
-- **AI Analysis (OpenAI)** - OpenAI API configuration for AI-powered risk analysis
-
-### Graceful Degradation
-
-All optional services degrade gracefully when not configured:
-
-| Service | Unconfigured Behavior |
-|---------|----------------------|
-| Storage | Falls back to local HTML downloads |
-| SMTP | Digest emails disabled with clear status badge |
-| OpenAI | Runs in deterministic stub mode |
-
-### Environment Variable Fallback
-
-Settings configured in the UI take precedence over environment variables. If a setting is not configured in the UI, the system falls back to the corresponding environment variable. Existing deployments using environment variables continue to work unchanged.
-
-#### Environment Variables
-
-**Storage (S3/MinIO):**
-- `S3_ENDPOINT` - S3-compatible endpoint URL
-- `S3_REGION` - AWS region (default: us-east-1)
-- `S3_ACCESS_KEY_ID` - Access key ID
-- `S3_SECRET_ACCESS_KEY` - Secret access key
-- `S3_BUCKET` - Bucket name
-- `S3_PUBLIC_URL` - Public URL prefix (optional)
-
-**SMTP:**
-- `SMTP_HOST` - SMTP server hostname
-- `SMTP_PORT` - SMTP port (default: 587)
-- `SMTP_USER` - SMTP username
-- `SMTP_PASS` - SMTP password
-- `DIGEST_FROM_ADDRESS` - Sender email address
-
-**OpenAI:**
-- `OPENAI_API_KEY` - OpenAI API key
-- `OPENAI_MODEL` - Model name (default: gpt-4)
-- `OPENAI_MAX_TOKENS` - Max tokens per request (default: 4096)
-- `OPENAI_REQUESTS_PER_MINUTE` - Rate limit (default: 60)
+A Next.js application for construction claims management with deep integrations to construction industry platforms.
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-
-### Installation
+First, install the dependencies:
 
 ```bash
 npm install
 ```
 
-### Database Setup
-
-```bash
-# Run migrations
-npm run db:migrate
-
-# Or push schema directly
-npm run db:push
-```
-
-### Development
+Then, run the development server:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the application.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Admin Settings
+## Features
 
-Navigate to [http://localhost:3000/admin/settings](http://localhost:3000/admin/settings) to configure optional services.
+### Project Management
+
+- View and manage construction projects
+- Track project status, risk levels, and progress
+- Monitor budgets and claims
+
+### Claims Tracking
+
+- Submit and review claims
+- Track claim status through approval workflow
+- Link claims to external issue tracking systems
+
+### Integrations
+
+ClaimZero connects with leading construction management platforms to streamline your workflow.
+
+## Autodesk Construction Cloud Integration
+
+ClaimZero provides deep integration with Autodesk Construction Cloud (ACC), allowing you to:
+
+- **Sync Projects**: Connect your ACC projects with ClaimZero projects
+- **Import Issues**: Convert ACC issues directly into ClaimZero claims
+- **Access Documents**: Browse and reference project documents from ACC
+- **Real-time Updates**: Receive webhook notifications when data changes
+
+### Setup
+
+1. **Create an Autodesk Platform Services Application**
+
+   Visit [Autodesk Platform Services](https://aps.autodesk.com/) and create a new application. Note your Client ID and Client Secret.
+
+2. **Configure Environment Variables**
+
+   Add the following environment variables to your `.env.local` file:
+
+   ```env
+   AUTODESK_CLIENT_ID=your_client_id
+   AUTODESK_CLIENT_SECRET=your_client_secret
+   AUTODESK_CALLBACK_URL=http://localhost:3000/api/autodesk/auth/callback
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```
+
+3. **Configure OAuth Callback**
+
+   In the Autodesk Platform Services portal, add `http://localhost:3000/api/autodesk/auth/callback` as an allowed callback URL.
+
+4. **Connect Your Account**
+
+   Navigate to `/integrations/autodesk` in the application and click "Connect to Autodesk" to authorize the integration.
+
+### API Endpoints
+
+#### Authentication
+
+- `GET /api/autodesk/auth` - Get OAuth authorization URL
+- `GET /api/autodesk/auth/callback` - OAuth callback handler
+- `POST /api/autodesk/auth/refresh` - Refresh access token
+- `GET /api/autodesk/auth/status` - Check authentication status
+- `DELETE /api/autodesk/auth` - Revoke token and disconnect
+
+#### Hubs & Projects
+
+- `GET /api/autodesk/hubs` - List all accessible hubs (accounts)
+- `GET /api/autodesk/projects?hubId=<id>` - List projects in a hub
+- `GET /api/autodesk/projects/[projectId]` - Get project details
+
+#### Issues
+
+- `GET /api/autodesk/issues?projectId=<id>` - List issues in a project
+- `POST /api/autodesk/issues` - Create a new issue
+- `GET /api/autodesk/issues/[issueId]?projectId=<id>` - Get issue details
+- `PATCH /api/autodesk/issues/[issueId]` - Update an issue
+- `GET /api/autodesk/issues/types?projectId=<id>` - Get issue types
+
+### Data Types
+
+The integration uses comprehensive TypeScript types for all Autodesk data structures. See `lib/autodesk/types.ts` for:
+
+- `AutodeskProject` - Project data from ACC
+- `AutodeskIssue` - Issue/RFI data
+- `AutodeskUser` - User information
+- `AutodeskFolder` / `AutodeskItem` - Document structure
+- And more...
+
+### Components
+
+Pre-built React components for the integration:
+
+```tsx
+import {
+  AutodeskConnectButton,
+  AutodeskConnectionStatus,
+  AutodeskProjectSelector,
+  AutodeskIssuesList,
+} from "@/components/autodesk";
+
+// Connect button
+<AutodeskConnectButton
+  onConnectStart={() => console.log("Connecting...")}
+  onError={(error) => console.error(error)}
+/>
+
+// Connection status indicator
+<AutodeskConnectionStatus
+  onDisconnect={() => console.log("Disconnected")}
+/>
+
+// Project selector
+<AutodeskProjectSelector
+  onProjectSelect={(project, hub) => console.log(project)}
+  selectedProjectId={currentProjectId}
+/>
+
+// Issues list with import capability
+<AutodeskIssuesList
+  projectId={projectId}
+  onImportIssue={(issue) => importAsClai(issue)}
+/>
+```
+
+### Scopes Required
+
+The integration requests the following OAuth scopes:
+
+- `data:read` - Read project data and documents
+- `data:write` - Create and update data
+- `account:read` - Access account information
+- `user-profile:read` - Read user profile data
+
+## Error Handling
+
+This application includes a comprehensive error handling system:
+
+### Error Boundary Component
+
+The `ErrorBoundary` component (`components/error-boundary.tsx`) catches JavaScript errors anywhere in the component tree and displays a fallback UI.
+
+**Features:**
+- Catches errors in child components
+- Displays a user-friendly error message
+- Provides "Try Again" and "Refresh Page" buttons for recovery
+- Shows error details in development mode
+- Logs errors to console (ready for integration with error tracking services)
+
+**Usage:**
+
+```tsx
+import { ErrorBoundary } from "@/components/error-boundary";
+
+// Basic usage
+<ErrorBoundary>
+  <YourComponent />
+</ErrorBoundary>
+
+// With custom fallback
+<ErrorBoundary fallback={<CustomErrorUI />}>
+  <YourComponent />
+</ErrorBoundary>
+
+// With render prop fallback for access to error and reset
+<ErrorBoundary
+  fallback={({ error, resetError }) => (
+    <div>
+      <p>Error: {error.message}</p>
+      <button onClick={resetError}>Retry</button>
+    </div>
+  )}
+>
+  <YourComponent />
+</ErrorBoundary>
+```
+
+### Next.js Error Pages
+
+- `app/error.tsx` - Route-level error handling
+- `app/global-error.tsx` - Root layout error handling
+- `app/not-found.tsx` - 404 page
 
 ## Tech Stack
 
-- [Next.js 14](https://nextjs.org/) - React framework
-- [React 18](https://react.dev/) - UI library
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-- [Prisma](https://www.prisma.io/) - Database ORM
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [AWS SDK](https://aws.amazon.com/sdk-for-javascript/) - S3-compatible storage
-- [Nodemailer](https://nodemailer.com/) - Email sending
-- [OpenAI](https://openai.com/) - AI analysis
+- [Next.js 14](https://nextjs.org/)
+- [React 18](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
 
 ## Project Structure
 
 ```
 ├── app/
-│   ├── admin/settings/     # Admin settings UI
-│   ├── api/admin/settings/ # Settings API routes
-│   └── generated/prisma/   # Generated Prisma client
+│   ├── api/
+│   │   └── autodesk/          # Autodesk API routes
+│   │       ├── auth/          # Authentication endpoints
+│   │       ├── hubs/          # Hub endpoints
+│   │       ├── projects/      # Project endpoints
+│   │       └── issues/        # Issues endpoints
+│   ├── integrations/
+│   │   ├── page.tsx           # Integration hub
+│   │   └── autodesk/          # Autodesk integration page
+│   └── projects/              # Project management pages
 ├── components/
-│   ├── admin/              # Admin-specific components
-│   └── ui/                 # Reusable UI components
-├── lib/
-│   ├── db.ts               # Database client
-│   ├── settings.ts         # Settings service
-│   ├── storage.ts          # S3/MinIO service
-│   ├── email.ts            # SMTP service
-│   └── openai.ts           # OpenAI service
-└── prisma/
-    ├── schema.prisma       # Database schema
-    └── migrations/         # Database migrations
+│   ├── autodesk/              # Autodesk UI components
+│   └── error-boundary.tsx     # Error handling
+└── lib/
+    ├── autodesk/              # Autodesk service layer
+    │   ├── types.ts           # TypeScript types
+    │   ├── auth.ts            # OAuth authentication
+    │   └── api.ts             # API client
+    ├── types.ts               # Core app types
+    └── data.ts                # Sample data
 ```
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `AUTODESK_CLIENT_ID` | Autodesk application Client ID | Yes (for integration) |
+| `AUTODESK_CLIENT_SECRET` | Autodesk application Client Secret | Yes (for integration) |
+| `AUTODESK_CALLBACK_URL` | OAuth callback URL | No (defaults to app URL) |
+| `NEXT_PUBLIC_APP_URL` | Public application URL | No (defaults to localhost) |
 
 ## License
 
-Private - All rights reserved
+This project is private and proprietary.
